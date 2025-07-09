@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 09, 2025 at 06:22 AM
+-- Generation Time: Jul 09, 2025 at 06:50 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -64,7 +64,13 @@ INSERT INTO `tbl_user_logs` (`id`, `username`, `action`, `timestamp`) VALUES
 (3, 'admin1', 'login', '2025-07-09 12:18:13'),
 (4, 'admin1', 'logout', '2025-07-09 12:18:45'),
 (5, 'admin2', 'login', '2025-07-09 12:19:17'),
-(6, 'admin2', 'logout', '2025-07-09 12:21:20');
+(6, 'admin2', 'logout', '2025-07-09 12:21:20'),
+(7, 'admin1', 'login', '2025-07-09 12:31:51'),
+(8, 'admin1', 'login', '2025-07-09 12:36:11'),
+(9, 'admin1', 'login', '2025-07-09 12:38:32'),
+(10, 'admin1', 'login', '2025-07-09 12:40:00'),
+(11, 'admin1', 'login', '2025-07-09 12:42:35'),
+(12, 'admin1', 'login', '2025-07-09 12:44:59');
 
 --
 -- Indexes for dumped tables
@@ -90,7 +96,7 @@ ALTER TABLE `tbl_user_logs`
 -- AUTO_INCREMENT for table `tbl_user_logs`
 --
 ALTER TABLE `tbl_user_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

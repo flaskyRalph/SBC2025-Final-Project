@@ -164,6 +164,12 @@ selected_category = st.sidebar.selectbox("Select Category", categories)
 regions = df['Region'].unique().tolist()
 selected_region = st.sidebar.selectbox("Select Region", regions)
 
+
+
+
+
+
+
 # Forecast months as a selectbox with month labels
 future_months = 12
 future_month_labels = []
@@ -183,6 +189,7 @@ if df_filtered.empty:
     st.warning("No data available for the selected category and region.")
     st.stop()
 
+
 # --- Feature Engineering ---
 df_model = df_filtered.copy()
 columns_to_encode = ["Seasonality", "Weather Condition", "Region", "Category"]
@@ -194,10 +201,18 @@ df_model['Day'] = df_model['Date'].dt.day
 df_model = df_model.drop(["Date", "Store ID", "Product ID"], axis=1)
 df_model.dropna(inplace=True)
 
+# --- Forecast Target Selection ---
+target_options = [col for col in df_model.columns]
+default_target = "Price" if "Price" in target_options else target_options[0]
+selected_target = st.sidebar.selectbox("Select column to forecast (target)", target_options, index=target_options.index(default_target))
+
+
 # --- Model Training ---
-st.subheader(f"📈 Forecasting Price for {selected_category} in {selected_region}")
-X = df_model[["Demand Forecast", "Competitor Pricing", "Discount", "Units Sold", "Inventory Level", "Units Ordered"]]
-y = df_model["Price"]
+st.subheader(f"📈 Forecasting {selected_target} for {selected_category} in {selected_region}")
+# Use all numeric columns except the target as features
+feature_candidates = [col for col in df_model.columns if col != selected_target]
+X = df_model[feature_candidates]
+y = df_model[selected_target]
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
@@ -211,7 +226,7 @@ rmse = np.sqrt(mean_squared_error(y_test, preds))
 
 # --- Evaluation ---
 st.metric("MAE (Mean Absolute Error)", f"{mae:.2f}")
-st.metric("RMSE (Root Mean Squared Error)", f"{rmse:.2f}")
+st.metric("RMSE", f"{rmse:.2f}")
 
 # --- Feature Importance ---
 st.subheader("🔍 Feature Importance")
@@ -230,8 +245,8 @@ ax1.legend()
 ax1.grid(True)
 st.pyplot(fig1)
 
-# --- Forecast Future Prices ---
-st.subheader("🔮 Forecast Future Prices")
+# --- Forecast Future Values ---
+st.subheader(f"🔮 Forecast Future {selected_target}")
 if st.button("Generate Forecast"):
     last_row = df_model.iloc[-1:].copy()
     future_predictions = []
@@ -247,24 +262,21 @@ if st.button("Generate Forecast"):
         last_row['Day'] = current_date.day
 
         # Optionally, simulate changes in other features for more realistic forecasting
-        # Here, we'll add a small random walk to Demand Forecast and Competitor Pricing
-        last_row['Demand Forecast'] = last_row['Demand Forecast'] * np.random.uniform(0.98, 1.02)
-        last_row['Competitor Pricing'] = last_row['Competitor Pricing'] * np.random.uniform(0.98, 1.02)
-        last_row['Discount'] = last_row['Discount']  # or you can change this if you want
-        last_row['Units Sold'] = last_row['Units Sold'] * np.random.uniform(0.98, 1.02)
-        last_row['Inventory Level'] = last_row['Inventory Level'] * np.random.uniform(0.98, 1.02)
-        last_row['Units Ordered'] = last_row['Units Ordered'] * np.random.uniform(0.98, 1.02)
+        # Here, we'll add a small random walk to all numeric features except the target
+        for col in feature_candidates:
+            if col not in ['Month', 'Day']:
+                last_row[col] = last_row[col] * np.random.uniform(0.98, 1.02)
 
-        next_input = last_row[["Demand Forecast", "Competitor Pricing", "Discount", "Units Sold", "Inventory Level", "Units Ordered"]].values
+        next_input = last_row[feature_candidates].values
         next_input_scaled = scaler.transform(next_input)
-        next_price = model.predict(next_input_scaled)[0]
+        next_pred = model.predict(next_input_scaled)[0]
 
-        # Update last_row's Price to the predicted value for next iteration (optional, for chained forecasting)
-        last_row['Price'] = next_price
+        # Update last_row's target to the predicted value for next iteration (optional, for chained forecasting)
+        last_row[selected_target] = next_pred
 
-        future_predictions.append(next_price)
+        future_predictions.append(next_pred)
 
     # --- Plot Forecast ---
-    forecast_df = pd.DataFrame({"Month": future_month_labels[:forecast_months], "Forecasted Price": future_predictions})
+    forecast_df = pd.DataFrame({"Month": future_month_labels[:forecast_months], f"Forecasted {selected_target}": future_predictions})
     st.line_chart(forecast_df.set_index("Month"))
     st.write(forecast_df)
