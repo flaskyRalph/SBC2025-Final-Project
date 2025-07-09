@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from datetime import timedelta
+from datetime import timedelta, datetime
 import hashlib
 from sqlalchemy import create_engine, String
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
 DB_USER = 'root'  
 DB_PASS = ''     
 DB_HOST = 'localhost'
-DB_NAME = 'retail_users'
+DB_NAME = 'retail_users_db'
 DB_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
 
 engine = create_engine(DB_URL)
@@ -26,10 +26,28 @@ SessionLocal = sessionmaker(bind=engine)
 class Base(DeclarativeBase):
     pass
 
+
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = 'tbl_users'
     username: Mapped[str] = mapped_column(String(255), primary_key=True)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+    date_created: Mapped[str] = mapped_column(String(255), nullable=True, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+# --- User Log Table ---
+class UserLog(Base):
+    __tablename__ = 'tbl_user_logs'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    timestamp: Mapped[str] = mapped_column(String(255), nullable=False, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+def log_user_action(username, action):
+    create_users_table()  # Ensures tables exist
+    session = SessionLocal()
+    log = UserLog(username=username, action=action, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    session.add(log)
+    session.commit()
+    session.close()
 
 def create_users_table():
     Base.metadata.create_all(engine)
@@ -58,6 +76,7 @@ def authenticate_user(username, password):
     user = session.query(User).filter_by(username=username).first()
     session.close()
     if user and user.password == hash_password(password):
+        log_user_action(username, "login")
         return True
     return False
 
@@ -97,6 +116,9 @@ if "logged_in" not in st.session_state:
 
 # --- Logout Button ---
 def logout():
+    username = st.session_state.get("username", "")
+    if username:
+        log_user_action(username, "logout")
     st.session_state["logged_in"] = False
     st.session_state["username"] = ""
     st.success("Logged out successfully.")
@@ -188,8 +210,8 @@ mae = mean_absolute_error(y_test, preds)
 rmse = np.sqrt(mean_squared_error(y_test, preds))
 
 # --- Evaluation ---
-st.metric("MAE", f"{mae:.2f}")
-st.metric("RMSE", f"{rmse:.2f}")
+st.metric("MAE (Mean Absolute Error)", f"{mae:.2f}")
+st.metric("RMSE (Root Mean Squared Error)", f"{rmse:.2f}")
 
 # --- Feature Importance ---
 st.subheader("🔍 Feature Importance")
